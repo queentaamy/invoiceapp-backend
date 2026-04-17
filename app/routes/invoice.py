@@ -132,3 +132,51 @@ def delete_invoice(invoice_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Invoice deleted successfully"}
+
+# Update an invoice
+@router.put("/invoices/{invoice_id}", response_model=InvoiceRead)
+def update_invoice(invoice_id: int, data: InvoiceCreate, db: Session = Depends(get_db)):
+
+    # Find invoice
+    invoice: Invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+
+    # If not found
+    if not invoice:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    # Recalculate subtotal
+    subtotal = 0
+    for item in data.items:
+        subtotal += item.quantity * item.unit_price
+
+    # Recalculate tax
+    tax = subtotal * 0.15 if data.apply_tax else 0
+
+    # Recalculate total
+    total = subtotal + tax
+
+    # Update invoice fields
+    invoice.customer_id = data.customer_id
+    invoice.subtotal = subtotal
+    invoice.tax = tax
+    invoice.total = total
+
+    # Delete old items
+    db.query(InvoiceItem).filter(InvoiceItem.invoice_id == invoice_id).delete()
+
+    # Add new items
+    for item in data.items:
+        db_item = InvoiceItem(
+            invoice_id=invoice.id,
+            item_name=item.item_name,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            total_price=item.quantity * item.unit_price
+        )
+        db.add(db_item)
+
+    db.commit()
+    db.refresh(invoice)
+
+    return invoice
