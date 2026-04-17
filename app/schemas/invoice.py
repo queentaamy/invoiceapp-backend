@@ -38,6 +38,7 @@ class InvoiceRead(BaseModel):
     subtotal: float
     tax: float
     total: float
+    items: List[InvoiceItemRead]
 
     class Config:
         from_attributes = True

@@ -42,6 +42,9 @@ class Invoice(Base):
     # Relationship (connects invoice to customer)
     customer = relationship("Customer")
 
+    # Add relationship to items
+    items = relationship("InvoiceItem")
+
 
 # Invoice items table
 class InvoiceItem(Base):
