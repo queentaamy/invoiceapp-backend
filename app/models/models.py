@@ -27,23 +27,17 @@ class Invoice(Base):
     __tablename__ = "invoices"
 
     id = Column(Integer, primary_key=True, index=True)
-
-    # Example: INV-001
     invoice_number = Column(String, nullable=False)
-
-    # Link to customer
     customer_id = Column(Integer, ForeignKey("customers.id"))
-
-    # Financial fields
     subtotal = Column(Float)
     tax = Column(Float)
     total = Column(Float)
 
-    # Relationship (connects invoice to customer)
-    customer = relationship("Customer")
+    # Relationship to items
+    items = relationship("InvoiceItem", back_populates="invoice")
 
-    # Add relationship to items
-    items = relationship("InvoiceItem")
+    # Relationship to customer
+    customer = relationship("Customer")
 
 
 # Invoice items table
@@ -51,8 +45,6 @@ class InvoiceItem(Base):
     __tablename__ = "invoice_items"
 
     id = Column(Integer, primary_key=True, index=True)
-
-    # Link to invoice
     invoice_id = Column(Integer, ForeignKey("invoices.id"))
 
     item_name = Column(String, nullable=False)
@@ -60,5 +52,5 @@ class InvoiceItem(Base):
     unit_price = Column(Float)
     total_price = Column(Float)
 
-    # Relationship
-    invoice = relationship("Invoice")
+    # Link back to invoice
+    invoice = relationship("Invoice", back_populates="items")

@@ -1,10 +1,10 @@
 # Import BaseModel for data validation
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 # Schema for creating a customer (input)
 class CustomerCreate(BaseModel):
     name: str
-    email: str
+    email: EmailStr # Validates that the email is in correct format
 
 # Schema for returning customer data (output)
 class CustomerRead(BaseModel):

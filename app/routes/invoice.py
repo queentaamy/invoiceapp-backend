@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import SessionLocal
 
 # Import database models
-from app.models.models import Invoice, InvoiceItem
+from app.models.models import Invoice, InvoiceItem, Customer
 
 # Import schemas for validation and response
 from app.schemas.invoice import InvoiceCreate, InvoiceRead
@@ -37,12 +37,19 @@ def test_invoice_route():
 @router.post("/invoices", response_model=InvoiceRead)
 def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db)):
 
+    # Check if customer exists
+    customer = db.query(Customer).filter(Customer.id == data.customer_id).first()
+
+    if not customer:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Customer not found")
+
     # Calculate subtotal
     subtotal = 0
     for item in data.items:
         subtotal += item.quantity * item.unit_price
 
-    # Calculate tax if applied
+    # Calculate tax
     tax = subtotal * 0.15 if data.apply_tax else 0
 
     # Calculate total
@@ -52,7 +59,7 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db)):
     invoice_count = db.query(Invoice).count()
     invoice_number = f"INV-{invoice_count + 1:03}"
 
-    # Create invoice record
+    # Create invoice
     new_invoice = Invoice(
         invoice_number=invoice_number,
         customer_id=data.customer_id,
@@ -61,12 +68,11 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db)):
         total=total
     )
 
-    # Save invoice
     db.add(new_invoice)
     db.commit()
     db.refresh(new_invoice)
 
-    # Save invoice items
+    # Save items
     for item in data.items:
         db_item = InvoiceItem(
             invoice_id=new_invoice.id,
@@ -90,3 +96,18 @@ def get_invoices(db: Session = Depends(get_db)):
     invoices = db.query(Invoice).all()
 
     return invoices
+
+# Get one invoice by ID
+@router.get("/invoices/{invoice_id}", response_model=InvoiceRead)
+def get_invoice(invoice_id: int, db: Session = Depends(get_db)):
+
+    # Find invoice by ID
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+
+    # If not found, return message
+    if not invoice:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    return invoice
