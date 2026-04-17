@@ -111,3 +111,24 @@ def get_invoice(invoice_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     return invoice
+
+# Delete an invoice by ID
+@router.delete("/invoices/{invoice_id}")
+def delete_invoice(invoice_id: int, db: Session = Depends(get_db)):
+
+    # Find invoice
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+
+    # If not found, return error
+    if not invoice:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    # Delete related items first
+    db.query(InvoiceItem).filter(InvoiceItem.invoice_id == invoice_id).delete()
+
+    # Delete invoice
+    db.delete(invoice)
+    db.commit()
+
+    return {"message": "Invoice deleted successfully"}
