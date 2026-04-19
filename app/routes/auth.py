@@ -8,20 +8,19 @@ from app.utils.auth import hash_password, verify_password, create_access_token
 
 router = APIRouter()
 
-# SIGNUP
 @router.post("/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):
 
-    # check if email already exists
+    # check if email exists
     existing_user = db.query(User).filter(User.email == user.email).first()
 
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    # create new user
+    # create user
     new_user = User(
         email=user.email,
-        password=hash_password(user.password)  # hash password
+        password=hash_password(user.password)  # hashed password
     )
 
     db.add(new_user)

@@ -3,8 +3,15 @@
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+import os
 
-SECRET_KEY = "your-secret-key"
+# Load secret key from environment
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+# fallback if .env is missing (optional but safe)
+if not SECRET_KEY:
+    SECRET_KEY = "dev-secret-key"
+
 ALGORITHM = "HS256"
 
 # bcrypt hashing
@@ -22,6 +29,7 @@ def verify_password(plain, hashed):
 def create_access_token(data: dict):
     to_encode = data.copy()
 
+    # token expires in 1 hour
     expire = datetime.utcnow() + timedelta(hours=1)
     to_encode.update({"exp": expire})
 
