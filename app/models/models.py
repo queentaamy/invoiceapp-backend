@@ -54,3 +54,17 @@ class InvoiceItem(Base):
 
     # Link back to invoice
     invoice = relationship("Invoice", back_populates="items")
+
+# User table to store authentication data
+from sqlalchemy import Column, Integer, String
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # user's email (used for login)
+    email = Column(String, unique=True, index=True)
+
+    # hashed password (never store plain password)
+    password = Column(String)

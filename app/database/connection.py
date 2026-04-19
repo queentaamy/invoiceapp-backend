@@ -1,24 +1,29 @@
-# Import required SQLAlchemy tools
+# Import required modules
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-# This is the database URL
-# sqlite:///./invoice.db means:
-# - use SQLite
-# - create a file called invoice.db in the current folder
-DATABASE_URL = "sqlite:///./invoice.db"
+# SQLite database URL
+SQLALCHEMY_DATABASE_URL = "sqlite:///./invoice.db"
 
-# Create the database engine
-# connect_args is needed for SQLite to allow multiple threads (FastAPI needs this)
+# Create engine (this connects to the database)
 engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False}  # needed for SQLite
 )
 
-# This creates a session factory
-# A session is what we use to interact with the database (read, write, update)
-SessionLocal = sessionmaker(bind=engine)
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base class that all our models will inherit from
-# It helps SQLAlchemy know how to create tables
+# Base class for models
 Base = declarative_base()
+
+
+# 👇 THIS IS WHAT YOU ARE MISSING
+# This function creates and closes DB session for each request
+def get_db():
+    db = SessionLocal()  # open connection
+    try:
+        yield db          # give it to route
+    finally:
+        db.close()        # close after request

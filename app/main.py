@@ -1,31 +1,29 @@
 # Import FastAPI
 from fastapi import FastAPI
 
-# Import database engine and Base class
+# Import database setup
 from app.database.connection import engine, Base
 
-# Import models so SQLAlchemy knows what tables to create
+# Import models so tables are created
 from app.models import models
 
-# Import customer routes
+# Import routes
 from app.routes.customer import router as customer_router
-
-# Import invoice routes 
 from app.routes.invoice import router as invoice_router
+from app.routes.auth import router as auth_router
 
-# Create FastAPI app
+# 👇 CREATE app FIRST
 app = FastAPI()
 
-# Create database tables automatically
+# 👇 THEN create tables
 Base.metadata.create_all(bind=engine)
 
-# Attach routes to the app
+# 👇 THEN include routes
 app.include_router(customer_router)
-
-# Attach invoice routes (NEW)
 app.include_router(invoice_router)
+app.include_router(auth_router)
 
-# Root endpoint (just to test the API is working)
+# Root endpoint
 @app.get("/")
 def root():
     return {"message": "InvoiceFlow API is running"}
