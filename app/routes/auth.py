@@ -31,8 +31,10 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
 
 
 # LOGIN
-@router.post("/login")
-def login(user: UserCreate, db: Session = Depends(get_db)):
+# schemas/user.py
+class UserLogin(BaseModel):
+    email: str
+    password: str
 
     db_user = db.query(User).filter(User.email == user.email).first()
 
