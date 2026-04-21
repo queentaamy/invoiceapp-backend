@@ -36,8 +36,5 @@ def upgrade(connection) -> None:
         ON customers (user_id, email);
     """))
 
-    # Keep names unique inside each user account to prevent duplicates by label.
-    connection.execute(text("""
-        CREATE UNIQUE INDEX IF NOT EXISTS ux_customers_user_name
-        ON customers (user_id, name);
-    """))
+    # Note: do not force name uniqueness here; some existing user data has
+    # duplicate names and this migration should remain non-breaking.
