@@ -6,8 +6,9 @@ Provides endpoints to:
 - Retrieve all customers
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 # Import database session factory
 from app.database.connection import SessionLocal
@@ -47,11 +48,26 @@ def create_customer(
     
     Returns: The newly created customer with ID
     """
+    # Prevent duplicate customer emails for the same user.
+    existing_customer = db.query(Customer).filter(
+        Customer.user_id == current_user.id,
+        Customer.email == customer.email
+    ).first()
+    if existing_customer:
+        raise HTTPException(status_code=400, detail="Customer email already exists")
+
+    # Generate per-user customer number (1, 2, 3...).
+    max_customer_number = db.query(func.max(Customer.customer_number)).filter(
+        Customer.user_id == current_user.id
+    ).scalar()
+    next_customer_number = (max_customer_number or 0) + 1
+
     # Create new Customer object from the input data
     new_customer = Customer(
         name=customer.name,
         email=customer.email,
-        user_id=current_user.id
+        user_id=current_user.id,
+        customer_number=next_customer_number
     )
 
     # Add to database session (marks as pending)
@@ -61,7 +77,12 @@ def create_customer(
     # Refresh to get auto-generated ID from database
     db.refresh(new_customer)
 
-    return new_customer
+    # Return per-user display ID so frontend shows Customer #1, #2, etc.
+    return CustomerRead(
+        id=new_customer.customer_number,
+        name=new_customer.name,
+        email=new_customer.email
+    )
 
 
 # Get all customers
@@ -76,6 +97,16 @@ def get_customers(
     Returns: List of all customers with their details
     """
     # Query all Customer records from database
-    customers = db.query(Customer).filter(Customer.user_id == current_user.id).all()
+    customers = db.query(Customer).filter(
+        Customer.user_id == current_user.id
+    ).order_by(Customer.customer_number.asc(), Customer.id.asc()).all()
 
-    return customers
+    # Return per-user display IDs to avoid showing global DB IDs.
+    return [
+        CustomerRead(
+            id=customer.customer_number,
+            name=customer.name,
+            email=customer.email
+        )
+        for customer in customers
+    ]

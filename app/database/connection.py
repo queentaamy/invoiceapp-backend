@@ -83,6 +83,21 @@ def ensure_customer_ownership_columns():
         customer_columns = {column["name"] for column in inspector.get_columns("customers")}
         if "user_id" not in customer_columns:
             connection.execute(text("ALTER TABLE customers ADD COLUMN user_id INTEGER"))
+        if "customer_number" not in customer_columns:
+            connection.execute(text("ALTER TABLE customers ADD COLUMN customer_number INTEGER"))
+
+        # Backfill per-user customer sequence for existing rows missing customer_number.
+        connection.execute(text("""
+            UPDATE customers AS c
+            SET customer_number = (
+                SELECT COUNT(*)
+                FROM customers AS c2
+                WHERE c2.user_id = c.user_id
+                  AND c2.id <= c.id
+            )
+            WHERE c.user_id IS NOT NULL
+              AND (c.customer_number IS NULL OR c.customer_number = 0)
+        """))
 
         invoice_columns = {column["name"] for column in inspector.get_columns("invoices")}
         if "user_id" not in invoice_columns:

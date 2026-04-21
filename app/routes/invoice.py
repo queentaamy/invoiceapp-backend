@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 # Import Session to interact with the database
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 # Import database session factory
 from app.database.connection import SessionLocal
@@ -24,13 +25,43 @@ from app.database.connection import SessionLocal
 from app.models.models import Invoice, InvoiceItem, Customer
 
 # Import schemas for validation and response
-from app.schemas.invoice import InvoiceCreate, InvoiceRead
+from app.schemas.invoice import InvoiceCreate, InvoiceRead, InvoiceItemRead
 
 # Import dependency for checking authentication (JWT token)
 from app.utils.deps import get_current_user
 
 # Create router instance for grouping invoice endpoints
 router = APIRouter()
+
+
+def _format_display_invoice_number(raw_invoice_number: str) -> str:
+    """Convert stored value like U2-INV-001 to display value INV-001."""
+    if raw_invoice_number.startswith("U") and "-INV-" in raw_invoice_number:
+        return f"INV-{raw_invoice_number.split('-INV-')[-1]}"
+    return raw_invoice_number
+
+
+def _to_invoice_read(invoice: Invoice) -> InvoiceRead:
+    """Map ORM invoice to API response using per-user display identifiers."""
+    display_customer_id = invoice.customer.customer_number if invoice.customer else invoice.customer_id
+
+    return InvoiceRead(
+        id=invoice.id,
+        invoice_number=_format_display_invoice_number(invoice.invoice_number),
+        customer_id=display_customer_id,
+        subtotal=invoice.subtotal,
+        tax=invoice.tax,
+        total=invoice.total,
+        items=[
+            InvoiceItemRead(
+                item_name=item.item_name,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                total_price=item.total_price,
+            )
+            for item in invoice.items
+        ],
+    )
 
 
 # Function to get database connection for each request
@@ -53,7 +84,7 @@ def test_invoice_route():
 # =========================
 # CREATE INVOICE
 # =========================
-@router.post("/invoices")
+@router.post("/invoices", response_model=InvoiceRead)
 def create_invoice(
     data: InvoiceCreate,
     db: Session = Depends(get_db),
@@ -79,7 +110,7 @@ def create_invoice(
     """
     # Verify the customer exists (can't create invoice for non-existent customer)
     customer = db.query(Customer).filter(
-        Customer.id == data.customer_id,
+        Customer.customer_number == data.customer_id,
         Customer.user_id == current_user.id
     ).first()
     if not customer:
@@ -94,14 +125,17 @@ def create_invoice(
     # Calculate final total
     total = subtotal + tax
 
-    # Generate unique invoice number (e.g., "INV-001", "INV-002")
-    invoice_count = db.query(Invoice).count()
-    invoice_number = f"INV-{invoice_count + 1:03}"
+    # Generate per-user invoice sequence and a globally unique stored invoice number.
+    invoice_count = db.query(func.count(Invoice.id)).filter(
+        Invoice.user_id == current_user.id
+    ).scalar()
+    invoice_sequence = (invoice_count or 0) + 1
+    invoice_number = f"U{current_user.id}-INV-{invoice_sequence:03}"
 
     # Create invoice object linked to current user
     new_invoice = Invoice(
         invoice_number=invoice_number,
-        customer_id=data.customer_id,
+        customer_id=customer.id,
         user_id=current_user.id,  # Important: Link to user for multi-user support
         subtotal=subtotal,
         tax=tax,
@@ -127,7 +161,9 @@ def create_invoice(
     # Save all items at once
     db.commit()
 
-    return new_invoice
+    db.refresh(new_invoice)
+
+    return _to_invoice_read(new_invoice)
 
 
 # =========================
@@ -148,7 +184,7 @@ def get_invoices(
     # Query only invoices belonging to the logged-in user
     invoices = db.query(Invoice).filter(Invoice.user_id == current_user.id).all()
 
-    return invoices
+    return [_to_invoice_read(invoice) for invoice in invoices]
 
 
 # =========================
@@ -182,7 +218,7 @@ def get_invoice(
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    return invoice
+    return _to_invoice_read(invoice)
 
 
 # =========================
@@ -302,4 +338,4 @@ def update_invoice(
     # Refresh to ensure we have latest data from database
     db.refresh(invoice)
 
-    return invoice 
+    return _to_invoice_read(invoice)

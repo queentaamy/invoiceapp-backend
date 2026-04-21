@@ -53,6 +53,9 @@ class Customer(Base):
     # Customer's email address (must be unique)
     email = Column(String, unique=True, index=True)
 
+    # Per-user customer sequence number (1, 2, 3...) used for display
+    customer_number = Column(Integer, index=True)
+
     # Foreign key linking customer to the user who created it
     user_id = Column(Integer, ForeignKey("users.id"))
 
