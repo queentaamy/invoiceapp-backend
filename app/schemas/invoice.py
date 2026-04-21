@@ -8,6 +8,7 @@ Schemas define input/output formats for invoice-related endpoints.
 from pydantic import BaseModel
 
 # Import List to handle multiple items in an invoice
+from datetime import date, datetime
 from typing import List
 
 
@@ -25,6 +26,7 @@ class InvoiceCreate(BaseModel):
     customer_id: int                        # Which customer is this invoice for?
     items: List[InvoiceItemCreate]          # List of items on the invoice
     apply_tax: bool                         # Should 15% tax be applied?
+    due_date: date | None = None            # Optional invoice due date
 
 
 # Schema for returning individual invoice items
@@ -49,6 +51,9 @@ class InvoiceRead(BaseModel):
     subtotal: float                 # Total before tax
     tax: float                      # Tax amount
     total: float                    # Final total (subtotal + tax)
+    due_date: date | None           # When the invoice should be paid
+    created_at: datetime            # When the invoice was created
+    is_paid: bool                   # Whether the invoice has been marked as paid
     items: List[InvoiceItemRead]    # All items on this invoice
 
     class Config:

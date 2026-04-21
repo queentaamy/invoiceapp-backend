@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from app.database.connection import SessionLocal
 
 # Import database model and schema
-from app.models.models import Customer
+from app.models.models import Customer, Invoice
 from app.schemas.customer import CustomerCreate, CustomerRead
 from app.utils.deps import get_current_user
 
@@ -125,3 +125,40 @@ def get_customers(
         )
         for customer in customers
     ]
+
+
+@router.delete("/customers/{customer_id}")
+def delete_customer(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Delete a customer from the authenticated user's customer list.
+
+    Customers with existing invoices are blocked to avoid orphaning invoice
+    history. Delete the related invoices first if the customer is no longer
+    needed.
+    """
+    customer = db.query(Customer).filter(
+        Customer.customer_number == customer_id,
+        Customer.user_id == current_user.id
+    ).first()
+
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    existing_invoice = db.query(Invoice.id).filter(
+        Invoice.customer_id == customer.id,
+        Invoice.user_id == current_user.id
+    ).first()
+    if existing_invoice:
+        raise HTTPException(
+            status_code=400,
+            detail="Delete the customer's invoices before deleting this customer"
+        )
+
+    db.delete(customer)
+    db.commit()
+
+    return {"message": "Customer deleted successfully"}

@@ -52,6 +52,9 @@ def _to_invoice_read(invoice: Invoice) -> InvoiceRead:
         subtotal=invoice.subtotal,
         tax=invoice.tax,
         total=invoice.total,
+        due_date=invoice.due_date,
+        created_at=invoice.created_at,
+        is_paid=invoice.is_paid,
         items=[
             InvoiceItemRead(
                 item_name=item.item_name,
@@ -139,7 +142,8 @@ def create_invoice(
         user_id=current_user.id,  # Important: Link to user for multi-user support
         subtotal=subtotal,
         tax=tax,
-        total=total
+        total=total,
+        due_date=data.due_date,
     )
 
     # Save invoice to database
@@ -182,7 +186,9 @@ def get_invoices(
     Security: Users can only see their own invoices
     """
     # Query only invoices belonging to the logged-in user
-    invoices = db.query(Invoice).filter(Invoice.user_id == current_user.id).all()
+    invoices = db.query(Invoice).filter(
+        Invoice.user_id == current_user.id
+    ).order_by(Invoice.created_at.desc(), Invoice.id.desc()).all()
 
     return [_to_invoice_read(invoice) for invoice in invoices]
 
@@ -308,16 +314,24 @@ def update_invoice(
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
+    customer = db.query(Customer).filter(
+        Customer.customer_number == data.customer_id,
+        Customer.user_id == current_user.id
+    ).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
     # Recalculate all financial totals based on new items
     subtotal = sum(item.quantity * item.unit_price for item in data.items)
     tax = subtotal * 0.15 if data.apply_tax else 0
     total = subtotal + tax
 
     # Update invoice with new financial data
-    invoice.customer_id = data.customer_id
+    invoice.customer_id = customer.id
     invoice.subtotal = subtotal
     invoice.tax = tax
     invoice.total = total
+    invoice.due_date = data.due_date
 
     # Delete all old line items
     db.query(InvoiceItem).filter(InvoiceItem.invoice_id == invoice_id).delete()
@@ -336,6 +350,33 @@ def update_invoice(
     # Commit all changes together
     db.commit()
     # Refresh to ensure we have latest data from database
+    db.refresh(invoice)
+
+    return _to_invoice_read(invoice)
+
+
+# =========================
+# MARK INVOICE AS PAID
+# =========================
+@router.patch("/invoices/{invoice_id}/paid", response_model=InvoiceRead)
+def mark_invoice_paid(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Mark an invoice as paid for the authenticated user.
+    """
+    invoice = db.query(Invoice).filter(
+        Invoice.id == invoice_id,
+        Invoice.user_id == current_user.id
+    ).first()
+
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    invoice.is_paid = True
+    db.commit()
     db.refresh(invoice)
 
     return _to_invoice_read(invoice)

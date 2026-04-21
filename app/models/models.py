@@ -1,12 +1,24 @@
 """
 DATABASE MODELS - Define the structure of database tables
 
-These classes represent tables in the SQLite database.
+These classes represent tables in the configured database.
 Each class creates a table with specified columns and relationships.
 """
 
 # Import SQLAlchemy tools for database operations
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.orm import relationship
 
 # Import Base class (parent class for all models)
@@ -26,7 +38,7 @@ class User(Base):
     # User email address (used for login) - must be unique
     email = Column(String, unique=True, index=True)
 
-    # 
+    # User display name for profile and invoice attribution
     name = Column(String)
 
     # Hashed password (never store plain text passwords!)
@@ -95,6 +107,9 @@ class Invoice(Base):
     subtotal = Column(Float)  # Total before tax
     tax = Column(Float)       # Tax amount (15% if applied)
     total = Column(Float)     # Final total (subtotal + tax)
+    due_date = Column(Date, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    is_paid = Column(Boolean, nullable=False, server_default=text("false"))
 
     # Relationships to other models
     # Links to the Customer this invoice is for
