@@ -40,6 +40,7 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     # Create new user with hashed password (never store plain passwords!)
     new_user = User(
         email=user.email,
+        name=user.name,
         password=hash_password(user.password)  # Hash using bcrypt
     )
 

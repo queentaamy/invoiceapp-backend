@@ -26,6 +26,9 @@ class User(Base):
     # User email address (used for login) - must be unique
     email = Column(String, unique=True, index=True)
 
+    # 
+    name = Column(String)
+
     # Hashed password (never store plain text passwords!)
     password = Column(String)
 
