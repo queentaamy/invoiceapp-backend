@@ -26,6 +26,7 @@ class UserRead(BaseModel):
     """Schema for returning user data - what API sends back to client"""
     id: int              # User's unique ID from database
     email: EmailStr      # User's email address
+    name: str            # User's name
 
     class Config:
         # Allows FastAPI to convert SQLAlchemy database objects to JSON automatically
