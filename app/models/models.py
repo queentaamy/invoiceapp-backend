@@ -6,7 +6,7 @@ Each class creates a table with specified columns and relationships.
 """
 
 # Import SQLAlchemy tools for database operations
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 # Import Base class (parent class for all models)
@@ -46,6 +46,9 @@ class User(Base):
 class Customer(Base):
     """Customer model for storing customer information"""
     __tablename__ = "customers"
+    __table_args__ = (
+        UniqueConstraint("user_id", "email", name="uq_customers_user_email"),
+    )
 
     # Primary key - unique identifier for each customer
     id = Column(Integer, primary_key=True, index=True)

@@ -9,7 +9,7 @@ Provides endpoints to:
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 # Import database session factory
@@ -51,28 +51,18 @@ def create_customer(
     Returns: The newly created customer with ID
     """
     customer_name = customer.name.strip()
-    customer_email = customer.email.strip()
+    customer_email = customer.email.strip().lower()
 
-    # Prevent duplicate customer names or emails for the same user.
+    # Prevent duplicate customer emails for the same user.
     existing_customer = db.query(Customer).filter(
         Customer.user_id == current_user.id,
-        or_(
-            func.lower(Customer.email) == func.lower(customer_email),
-            func.lower(Customer.name) == func.lower(customer_name)
-        )
+        func.lower(Customer.email) == customer_email
     ).first()
     if existing_customer:
-        same_name = existing_customer.name.strip().lower() == customer_name.lower()
-        same_email = existing_customer.email.strip().lower() == customer_email.lower()
-
-        if same_name and same_email:
-            detail = "Customer name and email already exist in your account"
-        elif same_name:
-            detail = "Customer name already exists in your account"
-        else:
-            detail = "Customer email already exists in your account"
-
-        raise HTTPException(status_code=400, detail=detail)
+        raise HTTPException(
+            status_code=400,
+            detail="Customer email already exists in your account"
+        )
 
     # Generate per-user customer number (1, 2, 3...).
     max_customer_number = db.query(func.max(Customer.customer_number)).filter(
@@ -97,7 +87,7 @@ def create_customer(
         db.rollback()
         raise HTTPException(
             status_code=400,
-            detail="Customer name or email already exists in your account"
+            detail="Customer email already exists in your account"
         )
     # Refresh to get auto-generated ID from database
     db.refresh(new_customer)
