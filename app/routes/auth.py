@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from app.models.models import User
-from app.schemas.user import UserCreate, UserLogin
+from app.schemas.user import UserCreate, UserLogin, UserRead
 from app.utils.auth import hash_password, verify_password, create_access_token
+from app.utils.deps import get_current_user
 
 # Create router for grouping auth endpoints
 router = APIRouter()
@@ -86,3 +87,9 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         "access_token": token,
         "token_type": "bearer"  # Client includes this in Authorization header
     }
+
+# Endpoint for profile
+@router.get("/profile", response_model=UserRead)
+def profile(current_user: User = Depends(get_current_user)):
+    """Alias endpoint for current user profile."""
+    return current_user
