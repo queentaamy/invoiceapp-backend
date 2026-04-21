@@ -11,6 +11,7 @@ from pydantic import BaseModel, EmailStr
 # Used when user signs up or logs in
 class UserCreate(BaseModel):
     """Schema for user registration/login - validates input data"""
+    name: str            # User's name
     email: EmailStr      # Email must be in valid email format
     password: str        # Plain password from user
 
