@@ -2,10 +2,13 @@
 DATABASE CONNECTION - Configure SQLAlchemy and database connection
 
 Sets up:
-- SQLite database connection
+- SQLite or PostgreSQL database connection
 - Session factory for database operations
 - Base class for defining models
 """
+
+import os
+from pathlib import Path
 
 # Import SQLAlchemy components for database operations
 from sqlalchemy import create_engine
@@ -18,17 +21,31 @@ from sqlalchemy.orm import sessionmaker
 # DATABASE CONFIGURATION
 # =============================
 
-# SQLite database URL pointing to invoice.db file
-# Format: sqlite:///./filename means local file in current directory
-SQLALCHEMY_DATABASE_URL = "sqlite:///./invoice.db"
+# Build a stable database path so reloads/restarts do not depend on the
+# directory the server was launched from.
+BASE_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_SQLITE_PATH = BASE_DIR / "invoice.db"
+
+# Allow overriding the database in deployments/tests, but default to the
+# project-level SQLite file.
+RAW_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"sqlite:///{DEFAULT_SQLITE_PATH}"
+)
+
+# Accept common Postgres URL variants from hosting providers and .env files.
+if RAW_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = RAW_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+else:
+    SQLALCHEMY_DATABASE_URL = RAW_DATABASE_URL
+
+# SQLite needs special thread handling, Postgres does not.
+engine_kwargs = {}
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
 
 # Create database engine (manages connections to the database)
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    # check_same_thread=False: SQLite by default doesn't allow threading,
-    # we disable it to allow FastAPI's async requests
-    connect_args={"check_same_thread": False}
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_kwargs)
 
 # Create session factory - used to create database sessions
 # - autocommit=False: Changes require explicit commit()
@@ -46,15 +63,15 @@ Base = declarative_base()
 def get_db():
     """
     Database session dependency for FastAPI routes
-    
+
     Creates a new database connection for each request,
     yields it to the route handler, then closes it after.
-    
+
     Usage in routes:
         @router.get("/items")
         def get_items(db: Session = Depends(get_db)):
             return db.query(Item).all()
-    
+
     This ensures proper resource management:
     1. Connection opens when request starts
     2. Route handler receives the session
@@ -77,6 +94,9 @@ def ensure_customer_ownership_columns():
     SQLite does not update old tables when models change, so this keeps the
     database compatible with the current multi-user data model.
     """
+    if not engine.dialect.name == "sqlite":
+        return
+
     inspector = inspect(engine)
 
     with engine.begin() as connection:
