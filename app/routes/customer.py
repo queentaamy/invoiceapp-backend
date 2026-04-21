@@ -62,10 +62,17 @@ def create_customer(
         )
     ).first()
     if existing_customer:
-        raise HTTPException(
-            status_code=400,
-            detail="Customer name or email already exists"
-        )
+        same_name = existing_customer.name.strip().lower() == customer_name.lower()
+        same_email = existing_customer.email.strip().lower() == customer_email.lower()
+
+        if same_name and same_email:
+            detail = "Customer name and email already exist in your account"
+        elif same_name:
+            detail = "Customer name already exists in your account"
+        else:
+            detail = "Customer email already exists in your account"
+
+        raise HTTPException(status_code=400, detail=detail)
 
     # Generate per-user customer number (1, 2, 3...).
     max_customer_number = db.query(func.max(Customer.customer_number)).filter(
@@ -90,7 +97,7 @@ def create_customer(
         db.rollback()
         raise HTTPException(
             status_code=400,
-            detail="Customer name or email already exists"
+            detail="Customer name or email already exists in your account"
         )
     # Refresh to get auto-generated ID from database
     db.refresh(new_customer)
