@@ -15,9 +15,9 @@ from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from app.models.models import User
+from app.utils.auth import SECRET_KEY
 
-# Secret key and algorithm (must match what's used in auth.py!)
-SECRET_KEY = "your-secret-key"  # TODO: Load from environment variable
+# Secret key and algorithm must match what's used when creating tokens
 ALGORITHM = "HS256"
 
 # Security scheme - automatically extracts Bearer token from Authorization header

@@ -47,7 +47,13 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)  # Refresh to get the user ID from database
 
-    return {"message": "User created successfully"}
+    # Create a token immediately so the user is logged in after signup
+    token = create_access_token({"user_id": new_user.id})
+
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
 
 
 @router.post("/login")
