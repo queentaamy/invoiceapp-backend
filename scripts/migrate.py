@@ -20,17 +20,16 @@ except ImportError:
     def load_dotenv() -> None:
         return None
 
+from sqlalchemy import text
+from app.database.connection import engine
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 MIGRATIONS_DIR = ROOT_DIR / "migrations"
 
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from sqlalchemy import text
-
 load_dotenv()
-
-from app.database.connection import engine
 
 
 def migration_files() -> list[Path]:

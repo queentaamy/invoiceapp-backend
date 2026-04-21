@@ -7,15 +7,6 @@ This file sets up the FastAPI application with all necessary configuration:
 - API routes for authentication, customers, and invoices
 """
 
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    # Allow app startup even if python-dotenv is not installed.
-    def load_dotenv():
-        return None
-
-load_dotenv()  # Load environment variables from .env file when available
-
 # Import FastAPI framework
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,20 +16,28 @@ from starlette.responses import Response
 from app.database.connection import engine, Base, ensure_customer_ownership_columns
 from app.utils.cache import response_cache
 
-# Import models so database tables are created on startup
-from app.models import models
 
 # Import route handlers
 from app.routes.customer import router as customer_router
 from app.routes.invoice import router as invoice_router
 from app.routes.auth import router as auth_router
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    # Allow app startup even if python-dotenv is not installed.
+    def load_dotenv():
+        return None
 
-# ✅ STEP 1: CREATE app INSTANCE
+
+load_dotenv()  # Load environment variables from .env file when available
+
+
+# CREATE app INSTANCE
 app = FastAPI(title="InvoiceFlow API", description="Invoice management system")
 
 
-# ✅ STEP 2: ADD MIDDLEWARE (CORS - allows requests from different origins)
+#  MIDDLEWARE (CORS - allows requests from different origins)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # TODO: Restrict to your frontend URL for production
