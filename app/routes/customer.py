@@ -15,6 +15,7 @@ from app.database.connection import SessionLocal
 # Import database model and schema
 from app.models.models import Customer
 from app.schemas.customer import CustomerCreate, CustomerRead
+from app.utils.deps import get_current_user
 
 # Create router instance for grouping customer endpoints
 router = APIRouter()
@@ -32,7 +33,11 @@ def get_db():
 
 # Create a new customer
 @router.post("/customers", response_model=CustomerRead)
-def create_customer(customer: CustomerCreate, db: Session = Depends(get_db)):
+def create_customer(
+    customer: CustomerCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
     """
     Create a new customer in the database
     
@@ -45,7 +50,8 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_db)):
     # Create new Customer object from the input data
     new_customer = Customer(
         name=customer.name,
-        email=customer.email
+        email=customer.email,
+        user_id=current_user.id
     )
 
     # Add to database session (marks as pending)
@@ -60,13 +66,16 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_db)):
 
 # Get all customers
 @router.get("/customers", response_model=list[CustomerRead])
-def get_customers(db: Session = Depends(get_db)):
+def get_customers(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
     """
     Retrieve all customers from the database
     
     Returns: List of all customers with their details
     """
     # Query all Customer records from database
-    customers = db.query(Customer).all()
+    customers = db.query(Customer).filter(Customer.user_id == current_user.id).all()
 
     return customers

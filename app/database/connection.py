@@ -9,6 +9,7 @@ Sets up:
 
 # Import SQLAlchemy components for database operations
 from sqlalchemy import create_engine
+from sqlalchemy import inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -67,3 +68,22 @@ def get_db():
     finally:
         # Always close connection, even if an error occurred
         db.close()
+
+
+def ensure_customer_ownership_columns():
+    """
+    Add missing ownership columns to existing SQLite tables.
+
+    SQLite does not update old tables when models change, so this keeps the
+    database compatible with the current multi-user data model.
+    """
+    inspector = inspect(engine)
+
+    with engine.begin() as connection:
+        customer_columns = {column["name"] for column in inspector.get_columns("customers")}
+        if "user_id" not in customer_columns:
+            connection.execute(text("ALTER TABLE customers ADD COLUMN user_id INTEGER"))
+
+        invoice_columns = {column["name"] for column in inspector.get_columns("invoices")}
+        if "user_id" not in invoice_columns:
+            connection.execute(text("ALTER TABLE invoices ADD COLUMN user_id INTEGER"))

@@ -78,7 +78,10 @@ def create_invoice(
     Raises: 404 if customer not found
     """
     # Verify the customer exists (can't create invoice for non-existent customer)
-    customer = db.query(Customer).filter(Customer.id == data.customer_id).first()
+    customer = db.query(Customer).filter(
+        Customer.id == data.customer_id,
+        Customer.user_id == current_user.id
+    ).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 

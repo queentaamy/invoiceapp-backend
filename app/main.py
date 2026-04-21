@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import database setup
-from app.database.connection import engine, Base
+from app.database.connection import engine, Base, ensure_customer_ownership_columns
 
 # Import models so database tables are created on startup
 from app.models import models
@@ -42,6 +42,9 @@ app.add_middleware(
 
 # ✅ STEP 3: CREATE DATABASE TABLES (if they don't exist)
 Base.metadata.create_all(bind=engine)
+
+# ✅ STEP 3.5: PATCH EXISTING SQLITE TABLES FOR NEW MULTI-USER OWNERSHIP COLUMNS
+ensure_customer_ownership_columns()
 
 
 # ✅ STEP 4: INCLUDE ROUTES (register all API endpoints)

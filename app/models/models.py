@@ -33,6 +33,9 @@ class User(Base):
     # 'back_populates' creates a two-way relationship
     invoices = relationship("Invoice", back_populates="owner")
 
+    # Relationship to customers - user can own multiple customers
+    customers = relationship("Customer", back_populates="owner")
+
 
 # =========================
 # CUSTOMER MODEL - Represents clients/customers who receive invoices
@@ -50,8 +53,14 @@ class Customer(Base):
     # Customer's email address (must be unique)
     email = Column(String, unique=True, index=True)
 
+    # Foreign key linking customer to the user who created it
+    user_id = Column(Integer, ForeignKey("users.id"))
+
     # Relationship to invoices - customer can have multiple invoices
     invoices = relationship("Invoice", back_populates="customer")
+
+    # Relationship to the user who owns this customer
+    owner = relationship("User", back_populates="customers")
 
 
 # =========================
