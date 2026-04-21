@@ -7,8 +7,14 @@ This file sets up the FastAPI application with all necessary configuration:
 - API routes for authentication, customers, and invoices
 """
 
-from dotenv import load_dotenv
-load_dotenv()  # Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    # Allow app startup even if python-dotenv is not installed.
+    def load_dotenv():
+        return None
+
+load_dotenv()  # Load environment variables from .env file when available
 
 # Import FastAPI framework
 from fastapi import FastAPI
