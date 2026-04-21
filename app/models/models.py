@@ -53,8 +53,8 @@ class Customer(Base):
     # Customer's business or personal name
     name = Column(String, index=True)
 
-    # Customer's email address (must be unique)
-    email = Column(String, unique=True, index=True)
+    # Customer's email address (unique per user)
+    email = Column(String, index=True)
 
     # Per-user customer sequence number (1, 2, 3...) used for display
     customer_number = Column(Integer, index=True)

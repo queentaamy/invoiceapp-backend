@@ -1,3 +1,4 @@
+# Every 
 """
 CUSTOMER ROUTES - Endpoints for managing customers
 
@@ -8,7 +9,8 @@ Provides endpoints to:
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError
 
 # Import database session factory
 from app.database.connection import SessionLocal
@@ -48,13 +50,22 @@ def create_customer(
     
     Returns: The newly created customer with ID
     """
-    # Prevent duplicate customer emails for the same user.
+    customer_name = customer.name.strip()
+    customer_email = customer.email.strip()
+
+    # Prevent duplicate customer names or emails for the same user.
     existing_customer = db.query(Customer).filter(
         Customer.user_id == current_user.id,
-        Customer.email == customer.email
+        or_(
+            func.lower(Customer.email) == func.lower(customer_email),
+            func.lower(Customer.name) == func.lower(customer_name)
+        )
     ).first()
     if existing_customer:
-        raise HTTPException(status_code=400, detail="Customer email already exists")
+        raise HTTPException(
+            status_code=400,
+            detail="Customer name or email already exists"
+        )
 
     # Generate per-user customer number (1, 2, 3...).
     max_customer_number = db.query(func.max(Customer.customer_number)).filter(
@@ -64,8 +75,8 @@ def create_customer(
 
     # Create new Customer object from the input data
     new_customer = Customer(
-        name=customer.name,
-        email=customer.email,
+        name=customer_name,
+        email=customer_email,
         user_id=current_user.id,
         customer_number=next_customer_number
     )
@@ -73,7 +84,14 @@ def create_customer(
     # Add to database session (marks as pending)
     db.add(new_customer)
     # Commit the changes (saves to database)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Customer name or email already exists"
+        )
     # Refresh to get auto-generated ID from database
     db.refresh(new_customer)
 
