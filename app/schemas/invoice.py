@@ -30,7 +30,6 @@ class InvoiceCreate(BaseModel):
 # Schema for returning individual invoice items
 class InvoiceItemRead(BaseModel):
     """Validates data returned for invoice items"""
-    date: str            # Date 
     item_name: str       # Product/service name
     quantity: int        # Quantity ordered
     unit_price: float    # Price per unit
