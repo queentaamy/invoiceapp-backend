@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from app.models.models import User
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, UserLogin
 from app.utils.auth import hash_password, verify_password, create_access_token
 
 # Create router for grouping auth endpoints
@@ -57,7 +57,7 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login")
-def login(user: UserCreate, db: Session = Depends(get_db)):
+def login(user: UserLogin, db: Session = Depends(get_db)):
     """
     Authenticate user and issue JWT token
     

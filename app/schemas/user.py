@@ -8,12 +8,17 @@ Pydantic validates that the data matches the expected format.
 from pydantic import BaseModel, EmailStr
 
 
-# Used when user signs up or logs in
+# Used when user signs up
 class UserCreate(BaseModel):
     """Schema for user registration/login - validates input data"""
     name: str            # User's name
     email: EmailStr      # Email must be in valid email format
     password: str        # Plain password from user
+
+class UserLogin(BaseModel):
+    """Schema for user login - validates email and password input"""
+    email: EmailStr      # User's email for login
+    password: str        # Plain password for authentication
 
 
 # Used when returning user data from the API
